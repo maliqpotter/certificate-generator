@@ -3,6 +3,10 @@
 
 **Certificate Generator** is a project I created to simplify the process of generating certificates when I am in charge of organizing events. Additionally, I have implemented functionality to send these certificates via email using Gmail.
 
+## Example Email and Certificate
+![Certificate](https://raw.githubusercontent.com/maliqpotter/certificate-generator/master/screens/example-sertifikat.png)
+![Email](https://raw.githubusercontent.com/maliqpotter/certificate-generator/master/screens/example-email.png)
+
 ## Requirement 
 
 * Python >= `3.10.xx`

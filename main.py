@@ -3,8 +3,8 @@ import pandas as pd
 import os
 
 # File paths
-template_path = "templates/participant-certificate.png"
-csv_path = "templates/participant-names.csv"
+template_path = "templates/sertifikat-peserta.png"
+csv_path = "templates/nama-peserta.csv"
 output_folder = "output"
 
 # Try reading the CSV with semicolon (;) as a separator
@@ -31,7 +31,7 @@ image_width, image_height = template.size
 # Generate certificates
 for index, row in data.iterrows():
     # Make sure the column name is "name"
-    name = row["name"]
+    name = row["nama"]
     
     # Reload the template every iteration
     cert = template.copy()
@@ -51,7 +51,7 @@ for index, row in data.iterrows():
     draw.text((text_x, text_y), name, fill="black", font=font)
     
     # Save the certificate
-    output_path = os.path.join(output_folder, f"Certificate_{name}.png")
+    output_path = os.path.join(output_folder, f"Sertifikat_{name}.png")
     cert.save(output_path)
 
 print("Certificates have been successfully created!")
