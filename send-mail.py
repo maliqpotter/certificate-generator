@@ -1,54 +1,43 @@
+import os
+import smtplib
+import pandas as pd
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+from email.mime.base import MIMEBase
+from email import encoders
+from dotenv import load_dotenv
 
-# Certificate Generator
+# Load environment variables from .env file
+load_dotenv()
 
-**Certificate Generator** is a project I created to simplify the process of generating certificates when I am in charge of organizing events. Additionally, I have implemented functionality to send these certificates via email using Gmail.
+# Email credentials
+# Replace with SMTP_USERNAME
+smtp_username = os.getenv("SMTP_USERNAME")
+# Replace with SMTP_PASSWORD
+smtp_password = os.getenv("SMTP_PASSWORD")
 
-## Requirement 
+# SMTP settings
+# Defaults to smtp.gmail.com if not found in .env
+smtp_server = os.getenv("SMTP_SERVER")
+# Defaults to port 587 if not found in .env
+smtp_port = int(os.getenv("SMTP_PORT"))
 
-* Python >= `3.10.xx`
+# Make sure the username and password are set in the .env
+if not smtp_username or not smtp_password:
+    raise ValueError("SMTP Username or SMTP Password not found in the .env file")
 
-## Preparation
+# Path for certificate folder and CSV file
+# Folder where certificates are saved
+output_folder = "output"
+# Path to the CSV file
+csv_path = "templates/nama-peserta.csv"
 
-In the `templates` folder, ensure you have the following three files:
-1. `MiriamLibre-SemiBold.ttf`
-2. `nama-peserta.csv`
-3. `sertifikat-peserta.png`
+# Read participant data from CSV with separator ;
+participants = pd.read_csv(csv_path, sep=";")
 
-Ensure the file names match the criteria mentioned above to prevent errors. This project also includes sample CSV and certificate files that were used to test and run the project.
+# Debug: Check the columns in the CSV
+print("Columns in the CSV:", participants.columns)
 
-For the CSV file, ensure it contains two columns named `nama` and `email`. The code is designed to work with CSV files that use semicolons (`;`) as separators.
-
-To create an email password, follow the instructions provided here: [Google Mail Support](https://support.google.com/mail/answer/185833?hl=en).  
-
-After creating the password, store it in a secure location.  
-
-**Note:** Once you have sent all the generated certificates to the recipients, be sure to **delete the password**. This password is intended for one-time use only to minimize security risks.
-
-## Installation
-
-* Install necessary modules
-
-```bash
-pip install -r requirements.txt
-```
-* Create the `output` folder where the generated certificate files will be stored.
-
-```bash
-mkdir output
-```
-
-## Generate Certificate
-
-To generate certificates, run the command below. Once the command is executed, wait for the program to complete the process. The generated certificates can be found in the `output` folder.
-
-```bash
-python main.py
-```
-
-## Send Certificate via GMail
-
-* If you want to customize the subject and body of the email, you can modify them in the send-mail.py file by updating the following function:
-```python
 # Function to send email
 def send_email(to_email, recipient_name):
     subject = "Sertifikat Kehadiran"
@@ -60,49 +49,55 @@ Terima kasih, semoga bermanfaat.
 
 Salam,
 Pengurus Event."""
-```
 
-* Copy the `.env.example` file and rename it to `.env`, then configure it as follows:
-```env
-SMTP_SERVER=smtp.gmail.com
-SMTP_PORT=587
-SMTP_USERNAME=<change to your username email>
-SMTP_PASSWORD="<change to your password from App Password>"
-```
-* To start sending emails, run the following command and wait until all emails have been sent to the recipients 
-```bash
-python send-email.py
-```
+    # Create the email
+    msg = MIMEMultipart()
+    msg['From'] = smtp_username
+    msg['To'] = to_email
+    msg['Subject'] = subject
 
-## Bring your Own Templates
-If you'd like to use your own certificate design and font, you can make adjustments in the `main.py` file.
+    # Add text to the email
+    msg.attach(MIMEText(body, 'plain'))
 
-* To change the font and adjust the font size to fit the certificate fields, modify the following code:
-```python
-# Font configuration
-font_path = "templates/MiriamLibre-SemiBold.ttf"
-font_size = 85
-```
-By default, the participant's name is centered in the certificate name field.
-* To adjust the horizontal position of the participant's name on the certificate, modify this code. Use `+` to move the name to the right and `-` to move it to the left. Example:
-```python
-    # Horizontal position (centered by default)
-    text_x = (image_width - text_width) / 2 + 10
-```
+    # Path for the certificate based on name
+    cert_path = os.path.join(output_folder, f"Sertifikat_{recipient_name}.png")
 
-* To adjust the vertical position of the participant's name on the certificate, modify this code. Use `+` to move the name up and `-` to move it down. Example:
-```python
-    # Vertical position (adjust as needed)
-    text_y = 500 + 40
-```
+    # Attach the certificate if found
+    if os.path.exists(cert_path):
+        try:
+            with open(cert_path, "rb") as attachment:
+                part = MIMEBase('application', 'octet-stream')
+                part.set_payload(attachment.read())
+                encoders.encode_base64(part)
+                part.add_header(
+                    "Content-Disposition",
+                    f"attachment; filename=Sertifikat_{recipient_name}.png",
+                )
+                msg.attach(part)
+        except Exception as e:
+            print(f"Error attaching certificate for {recipient_name}: {e}")
+            return
+    else:
+        print(f"Certificate for {recipient_name} not found. Skipping...")
+        return
 
-## Contributing
+    # Send the email
+    try:
+        with smtplib.SMTP(smtp_server, smtp_port) as server:
+            server.starttls()
+            # Use SMTP_USERNAME and SMTP_PASSWORD
+            server.login(smtp_username, smtp_password)
+            server.sendmail(smtp_username, to_email, msg.as_string())
+            print(f"Email successfully sent to {to_email}")
+    except Exception as e:
+        print(f"Failed to send email to {to_email}. Error: {e}")
 
-Pull requests are welcome. For major changes, please open an issue first
-to discuss what you would like to change.
-
-Please make sure to update tests as appropriate.
-
-## License
-
-[MIT](https://choosealicense.com/licenses/mit/)
+# Loop through participants and send email
+for _, row in participants.iterrows():
+    # Check if 'nama' and 'email' columns exist in CSV
+    if 'nama' in row and 'email' in row:
+        name = row['nama']
+        email = row['email']
+        send_email(email, name)
+    else:
+        print(f"'nama' or 'email' column not found in this row: {row}")
